@@ -73,6 +73,7 @@
         img.src = sketch.src;
         img.alt = sketch.caption;
         img.loading = sizeKnown(sketch) ? 'lazy' : 'eager';
+        img.addEventListener('load', () => tile.classList.add('loaded')); // fade in once fully loaded
         tile.append(img);
         return tile;
       });
