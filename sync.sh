@@ -10,4 +10,4 @@ git commit -m "$msg"
 # 3. Push to GitHub
 git push origin main
 
-echo "✅ Main Hub updated successfully!"
+echo "main hub updated successfully!"
