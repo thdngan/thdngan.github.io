@@ -82,19 +82,23 @@
       // Collage: sketches go into columns that all end at the same height. For a given number of
       // columns, the sketches are first spread so the columns come out about even, then the column
       // widths are adjusted until the heights match. If that can't work within limits, fewer
-      // columns are tried (one column always works). Sketches smaller than a column keep their own
-      // size (enlarging them would blur them) and go last.
+      // columns are tried (one column always works). No sketch is shown larger than its real
+      // resolution on the screen (it would blur), so ones smaller than a column go last.
       const GAP = 16; // matches the gap in style.css
       const MIN_COLUMN = 150;
       const MAX_COLUMNS = 3;
       const NARROWEST = 0.6, WIDEST = 1.6; // how far a column may stray from the even width
       const MAX_CROP = 0.1; // share of a sketch that may be cropped when widths alone can't even things out
-      let sizes = []; // natural [width, height] of each sketch
+      let sizes = []; // natural [width, height] of each sketch, in image pixels
       let laidOutWidth = 0;
 
       function arrange(count, width) {
         const baseWidth = (width - GAP * (count - 1)) / count;
-        const items = sizes.map(([w, h], i) => {
+        // Largest size each sketch can show at without being stretched: one image pixel per screen
+        // pixel, so smaller on high-density (e.g. phone) screens
+        const pixel = window.devicePixelRatio || 1;
+        const items = sizes.map(([naturalWidth, naturalHeight], i) => {
+          const w = naturalWidth / pixel, h = naturalHeight / pixel;
           const small = w < baseWidth;
           return { i, w, h, small, height: small ? h : baseWidth * h / w };
         });
