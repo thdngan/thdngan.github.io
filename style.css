@@ -878,23 +878,37 @@ body {
 }
 
 #gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 16px;
-    max-width: 816px; /* at most 4 columns */
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 16px; /* keep in sync with GAP in sketches.html */
+    max-width: 900px;
     margin: 0 auto;
     padding: 0 16px 40px;
     color: var(--accentColor);
-    text-align: center;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+#gallery.ready {
+    opacity: 1;
+}
+
+.sketch-column {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* small sketches keep their size, on the left */
+    gap: 16px;
+    min-width: 0;
 }
 
 .sketch {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    aspect-ratio: 1;
-    padding: 10px;
-    background-color: #fff; /* sketches are line art on transparent backgrounds */
+    position: relative; /* paint above the star layers */
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    background-color: #fff; /* for line art with transparent backgrounds */
     border-radius: 10px;
     transition: transform 0.2s ease;
     -webkit-tap-highlight-color: transparent;
@@ -908,9 +922,9 @@ body {
 
 .sketch img {
     display: block;
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* tiles are sized in sketches.html; only crops if a column hits its width limit */
 }
 
 .lightbox {
@@ -942,16 +956,16 @@ body {
 }
 
 .lightbox figure {
+    width: min-content; /* as wide as the image; the caption wraps to fit */
     margin: 0;
-    min-width: min(320px, 90vw);
     background-color: #fff;
 }
 
 .lightbox img {
     display: block;
+    min-width: min(240px, 90vw); /* room for the caption under very small sketches */
     max-width: 90vw;
     max-height: 80vh;
-    margin: 0 auto;
 }
 
 .lightbox figcaption {
@@ -964,6 +978,8 @@ body {
     color: var(--accentColor);
     font-family: Baskerville, Georgia, serif;
     font-style: italic;
+    text-align: center;
+    overflow-wrap: anywhere;
 }
 
 .lightbox-nav {

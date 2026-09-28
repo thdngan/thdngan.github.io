@@ -64,18 +64,160 @@
       const title = name => captions[name] ?? name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
 
       // Each tile links to #<file>; the hash decides which sketch the lightbox shows
-      for (const name of SKETCHES) {
+      const tiles = SKETCHES.map(name => {
         const tile = document.createElement('a');
         tile.className = 'sketch';
         tile.href = '#' + encodeURIComponent(name);
         const img = document.createElement('img');
         img.src = src(name);
         img.alt = title(name);
-        img.loading = 'lazy';
         tile.append(img);
-        gallery.append(tile);
-      }
+        return tile;
+      });
+      gallery.append(...tiles);
       if (!SKETCHES.length) gallery.textContent = 'nothing here yet';
+
+      // Collage: sketches go into columns that all end at the same height. For a given number of
+      // columns, the sketches are first spread so the columns come out about even, then the column
+      // widths are adjusted until the heights match. If that can't work within limits, fewer
+      // columns are tried (one column always works). Sketches smaller than a column keep their own
+      // size (enlarging them would blur them) and go last.
+      const GAP = 16; // matches the gap in style.css
+      const MIN_COLUMN = 150;
+      const MAX_COLUMNS = 3;
+      const NARROWEST = 0.6, WIDEST = 1.6; // how far a column may stray from the even width
+      const MAX_CROP = 0.1; // share of a sketch that may be cropped when widths alone can't even things out
+      let sizes = []; // natural [width, height] of each sketch
+      let laidOutWidth = 0;
+
+      function arrange(count, width) {
+        const baseWidth = (width - GAP * (count - 1)) / count;
+        const items = sizes.map(([w, h], i) => {
+          const small = w < baseWidth;
+          return { i, w, h, small, height: small ? h : baseWidth * h / w };
+        });
+        if (count === 1) return [{ members: items, width, scale: 1 }];
+        if (items.filter(item => !item.small).length < count) return null; // each column needs one to stretch
+
+        // How uneven the column heights are at even widths (Infinity if a column has no full-size sketch)
+        const unevenness = assign => {
+          const heights = Array(count).fill(-GAP);
+          const hasBig = Array(count).fill(false);
+          items.forEach(item => {
+            heights[assign[item.i]] += item.height + GAP;
+            if (!item.small) hasBig[assign[item.i]] = true;
+          });
+          if (hasBig.includes(false)) return Infinity;
+          const mean = heights.reduce((a, b) => a + b) / count;
+          return heights.reduce((sum, h) => sum + (h - mean) ** 2, 0);
+        };
+
+        // Start by dropping each sketch, full-size ones tallest first, into the shortest column...
+        const assign = [];
+        const heights = Array(count).fill(0);
+        [...items].sort((a, b) => a.small - b.small || b.height - a.height).forEach(item => {
+          const column = heights.indexOf(Math.min(...heights));
+          assign[item.i] = column;
+          heights[column] += item.height + GAP;
+        });
+
+        // ...then keep moving or swapping sketches between columns while that evens them out
+        let score = unevenness(assign);
+        for (let improved = true; improved;) {
+          improved = false;
+          for (const { i } of items) {
+            const changes = [];
+            for (let c = 0; c < count; c++) if (c !== assign[i]) changes.push([[i, c]]);
+            for (const { i: j } of items) if (assign[j] !== assign[i]) changes.push([[i, assign[j]], [j, assign[i]]]);
+            for (const change of changes) {
+              const undo = change.map(([k]) => [k, assign[k]]);
+              change.forEach(([k, c]) => assign[k] = c);
+              const next = unevenness(assign);
+              if (next < score - 1) {
+                score = next;
+                improved = true;
+                break;
+              }
+              undo.forEach(([k, c]) => assign[k] = c);
+            }
+          }
+        }
+
+        // A column of width x is x * stretch + fixed tall: full-size sketches scale with the width,
+        // small ones and gaps don't. Solve for the widths that give every column the same height,
+        // pinning any column that would go past its limits and solving again for the rest.
+        const columns = Array.from({ length: count }, (_, c) => {
+          const members = items.filter(item => assign[item.i] === c);
+          const big = members.filter(item => !item.small);
+          const small = members.filter(item => item.small);
+          return {
+            members: [...big, ...small],
+            stretch: big.reduce((sum, item) => sum + item.h / item.w, 0),
+            fixed: small.reduce((sum, item) => sum + item.h, 0) + GAP * (members.length - 1),
+            min: Math.max(NARROWEST * baseWidth, ...small.map(item => item.w)),
+            max: Math.min(WIDEST * baseWidth, ...big.map(item => item.w)), // never enlarge a sketch
+          };
+        });
+        const available = width - GAP * (count - 1);
+        let free = columns;
+        let height;
+        for (;;) {
+          if (!free.length) return null;
+          const pinned = columns.filter(col => !free.includes(col)).reduce((sum, col) => sum + col.width, 0);
+          height = (available - pinned + free.reduce((sum, col) => sum + col.fixed / col.stretch, 0))
+            / free.reduce((sum, col) => sum + 1 / col.stretch, 0);
+          free.forEach(col => col.width = (height - col.fixed) / col.stretch);
+          const outside = free.filter(col => col.width < col.min || col.width > col.max);
+          if (!outside.length) break;
+          outside.forEach(col => col.width = Math.min(col.max, Math.max(col.min, col.width)));
+          free = free.filter(col => !outside.includes(col));
+        }
+
+        // A pinned column can't reach the shared height by width alone, so its full-size sketches
+        // are cropped a little (shorter, or narrower without enlarging) to make up the difference
+        for (const col of columns) {
+          col.scale = (height - col.fixed) / (col.width * col.stretch);
+          const noEnlarging = Math.min(...col.members.filter(item => !item.small).map(item => item.w)) / col.width;
+          if (col.scale < 1 - MAX_CROP || col.scale > Math.min(1 / (1 - MAX_CROP), noEnlarging)) return null;
+        }
+        return columns;
+      }
+
+      function layout() {
+        const style = getComputedStyle(gallery);
+        const width = gallery.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        if (!tiles.length || width === laidOutWidth) return;
+        laidOutWidth = width;
+
+        let count = Math.max(1, Math.min(MAX_COLUMNS, Math.floor((width + GAP) / (MIN_COLUMN + GAP))));
+        let columns;
+        while (!(columns = arrange(count, width))) count--;
+
+        gallery.replaceChildren(...columns.map(col => {
+          const column = document.createElement('div');
+          column.className = 'sketch-column';
+          column.style.width = col.width + 'px';
+          for (const item of col.members) {
+            const tile = tiles[item.i];
+            const small = item.w < col.width && (item.small || count === 1);
+            tile.style.width = small ? item.w + 'px' : '';
+            tile.style.height = (small ? item.h : col.width * item.h / item.w * col.scale) + 'px';
+            column.append(tile);
+          }
+          return column;
+        }));
+      }
+
+      // Placement needs every sketch's size, so wait for all of them before showing the collage
+      Promise.all(tiles.map(tile => tile.firstChild.decode().catch(() => {}))).then(() => {
+        sizes = tiles.map(tile => {
+          const img = tile.firstChild;
+          return img.naturalWidth && img.naturalHeight ? [img.naturalWidth, img.naturalHeight] : [1, 1];
+        });
+        layout();
+        gallery.classList.add('ready');
+        new ResizeObserver(layout).observe(gallery);
+      });
       if (SKETCHES.length < 2) lightbox.querySelectorAll('.lightbox-nav').forEach(b => b.hidden = true);
 
       function sync() {
