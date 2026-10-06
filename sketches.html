@@ -16,6 +16,16 @@
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css">
     <!-- Core theme CSS -->
     <link rel="stylesheet" href="style.css">
+    <script>
+      window.goatcounter = {
+        path: (p) => {
+          const chromeVersion = navigator.userAgent.match(/Chrome\/(\d+)/);
+          const maybeBot = (chromeVersion && Number(chromeVersion[1]) < 140)
+            || (/Windows|X11/.test(navigator.userAgent) && screen.width <= 1024);
+          return (maybeBot ? '/possible-bot' : '') + p;
+        },
+      };
+    </script>
     <script data-goatcounter="https://dieungan.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
   </head>
 
