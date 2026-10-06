@@ -43,6 +43,18 @@ body {
     text-decoration: none;
 }
 
+#bio {
+    color: var(--accentColor);
+    font-size: 1rem;
+    line-height: 1.4;
+    max-width: 675px;
+    margin: 8px auto 0;
+    padding: 0 20px;
+    text-align: center;
+    text-wrap: balance; /* even lines when it wraps on a phone */
+    opacity: 0.8;
+}
+
 #links {
     max-width: 675px;
     width: auto;
@@ -151,17 +163,28 @@ body {
     outline: none;
 }
 
+/* Fades in while the picture grows a little. The growing is on the figure, not the whole lightbox:
+   a transform here would hold the arrows, which are pinned to the screen, inside it meanwhile */
 .lightbox[open] {
-    animation: .3s ease-out lightboxIn;
+    animation: .3s ease-out lightboxFade;
+}
+
+.lightbox[open] figure {
+    animation: .3s ease-out lightboxGrow;
 }
 
 .lightbox::backdrop {
     background-color: rgba(0, 0, 0, 0.7);
 }
 
-@keyframes lightboxIn {
+@keyframes lightboxFade {
     from {
         opacity: 0;
+    }
+}
+
+@keyframes lightboxGrow {
+    from {
         transform: scale(0.95);
     }
 }
@@ -181,40 +204,51 @@ body {
 }
 
 .lightbox figcaption {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
     padding: 10px 12px;
     background-color: var(--bgColor);
     color: var(--accentColor);
-    font-family: Baskerville, Georgia, serif;
+    font-family: "Andada Pro", Baskerville, Georgia, serif;
+    font-size: 1.1rem;
     font-style: italic;
     text-align: center;
     overflow-wrap: anywhere;
 }
 
-.lightbox-caption {
-    flex: 1;
-}
-
+/* Previous/next arrows. Pinned to the sides of the screen, not to the picture, so they stay put
+   as the sketches change size; on a wide screen they keep within reach of the picture instead */
 .lightbox-nav {
-    padding: 6px 10px;
+    position: fixed;
+    top: 50%;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-top: -1.375rem;
+    padding: 0;
     border: none;
-    background: none;
-    color: inherit;
+    border-radius: 100%;
+    background-color: var(--bgColor);
+    color: var(--accentColor);
     font-size: 1rem;
     opacity: 0.8;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.lightbox-nav:hover {
+.lightbox-nav[data-step="-1"] {
+    left: max(6px, 50% - 34rem);
+}
+
+.lightbox-nav[data-step="1"] {
+    right: max(6px, 50% - 34rem);
+}
+
+@media (hover: hover) {
+    .lightbox-nav:hover {
+        opacity: 1;
+    }
+}
+
+.lightbox-nav:active {
     opacity: 1;
-}
-
-.lightbox-nav[hidden] {
-    display: block;
-    visibility: hidden; /* keep the caption centred */
 }
 
 .popup-close {
