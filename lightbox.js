@@ -1,4 +1,4 @@
-// Lightbox shared by the hub (profile picture) and the sketches page, using the page's
+// Lightbox shared by the hub (profile picture) and the doddles page, using the page's
 // <dialog id="lightbox">. It shows entries[i] while the URL hash is #<entries[i].id>, so links,
 // the back button and shared #links all work. An entry may give:
 //   src, caption: what to show (otherwise the image and caption already in the dialog stay)

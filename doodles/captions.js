@@ -1,5 +1,5 @@
-// Captions for the sketches gallery, keyed by file name.
-// Sketches not listed here are captioned with their file name.
+// Captions for the doodles gallery, keyed by file name.
+// Doodles not listed here are captioned with their file name.
 const CAPTIONS = {
   "banneroriginal.svg": "Banner for L'arboretum",
   "icon.png": "Icon for L'arboretum",
